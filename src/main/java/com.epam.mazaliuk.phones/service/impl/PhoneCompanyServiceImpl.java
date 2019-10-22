@@ -5,6 +5,7 @@ import com.epam.mazaliuk.phones.dto.PhoneNumberDTO;
 import com.epam.mazaliuk.phones.entity.PhoneCompanyEntity;
 import com.epam.mazaliuk.phones.entity.PhoneNumberEntity;
 import com.epam.mazaliuk.phones.exception.PhoneCompanyNotFoundException;
+import com.epam.mazaliuk.phones.exception.PhonenNumberException;
 import com.epam.mazaliuk.phones.mapper.PhoneCompanyMapper;
 import com.epam.mazaliuk.phones.mapper.PhoneNumberMapper;
 import com.epam.mazaliuk.phones.repository.PhoneCompanyRepository;
@@ -105,6 +106,27 @@ public class PhoneCompanyServiceImpl implements PhoneCompanyService {
     @Transactional
     @Override
     public PhoneCompanyDTO addNumber(Long companyId, PhoneNumberDTO phoneNumberDTO) {
+        PhoneCompanyEntity phoneCompanyEntity = phoneCompanyRepository.getReferenceById(companyId)
+                .orElseThrow(PhoneCompanyNotFoundException::new);
+
+        PhoneNumberEntity phoneNumberEntity = phoneNumberMapper.map(phoneNumberDTO);
+        String phoneNumber = phoneNumberEntity.getNumber();
+
+        if (StringUtils.isEmpty(phoneNumber)) {
+            throw new PhonenNumberException("empty number");
+        }
+
+        phoneNumberEntity = phoneNumberRepository.findSingle(new PhoneNumberFindByNumberSpecification(phoneNumber))
+                .orElse(phoneNumberEntity);
+
+        phoneCompanyEntity.addNumber(phoneNumberEntity);
+        phoneNumberEntity.setPhoneCompany(phoneCompanyEntity);
+
+        return phoneCompanyMapper.map(phoneCompanyEntity);
+    }
+
+    @Override
+    public PhoneCompanyDTO update(Long aLong, PhoneCompanyDTO companyDTO) {
         return null;
     }
 

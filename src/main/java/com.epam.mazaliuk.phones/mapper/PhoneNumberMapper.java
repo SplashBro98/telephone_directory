@@ -34,7 +34,7 @@ public final class PhoneNumberMapper {
 
     public List<PhoneNumberDTO> mapListEntityToDTO(List<PhoneNumberEntity> phoneNumbers) {
 
-        if(CollectionUtils.isEmpty(phoneNumbers)) {
+        if (CollectionUtils.isEmpty(phoneNumbers)) {
             return null;
         }
 
@@ -45,7 +45,7 @@ public final class PhoneNumberMapper {
 
     public List<PhoneNumberEntity> mapListDTOToEntity(List<PhoneNumberDTO> phoneNumbers) {
 
-        if(CollectionUtils.isEmpty(phoneNumbers)) {
+        if (CollectionUtils.isEmpty(phoneNumbers)) {
             return null;
         }
 

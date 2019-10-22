@@ -11,7 +11,7 @@ import java.util.List;
 
 @AllArgsConstructor
 @RestController
-@RequestMapping("/users")
+@RequestMapping("/directory/users")
 public class UserController extends BaseController<UserDTO, UserSearch> {
 
     private final UserService userService;
@@ -38,7 +38,6 @@ public class UserController extends BaseController<UserDTO, UserSearch> {
         return userService.findPhoneNumbers(userId);
     }
 
-
     @PostMapping
     public UserDTO addUser(@RequestBody UserDTO userDTO) {
 
@@ -49,6 +48,12 @@ public class UserController extends BaseController<UserDTO, UserSearch> {
     public UserDTO addNumber(@PathVariable("userId") Long userId, @RequestBody PhoneNumberDTO phoneNumberDTO) {
 
         return userService.addNumber(userId, phoneNumberDTO);
+    }
+
+    @PutMapping("/{userId}")
+    public UserDTO updateUser(@PathVariable("userId") Long userId, @RequestBody UserDTO userDTO) {
+
+        return userService.update(userId, userDTO);
     }
 
 

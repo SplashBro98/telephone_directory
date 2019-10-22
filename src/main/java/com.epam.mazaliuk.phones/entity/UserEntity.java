@@ -19,16 +19,19 @@ public class UserEntity {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "first_name", nullable = false)
+    @Column(name = "user_name", unique = true, length = 40)
+    private String userName;
+
+    @Column(name = "first_name", nullable = false, length = 40)
     private String firstName;
 
-    @Column(name = "last_name", nullable = false)
+    @Column(name = "last_name", nullable = false, length = 40)
     private String lastName;
 
-    @Column(name = "city", nullable = false)
+    @Column(name = "city", nullable = false, length = 40)
     private String city;
 
-    @OneToMany(fetch = FetchType.LAZY, mappedBy = "user", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "user", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<PhoneNumberEntity> phoneNumbers;
 
     public void addNumber(PhoneNumberEntity phoneNumber) {

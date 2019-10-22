@@ -2,7 +2,6 @@ package com.epam.mazaliuk.phones.repository;
 
 import com.epam.mazaliuk.phones.specification.BaseSpecification;
 
-import javax.annotation.PostConstruct;
 import javax.persistence.EntityManager;
 import javax.persistence.NoResultException;
 import javax.persistence.PersistenceContext;
@@ -52,6 +51,8 @@ public abstract class AbstractRepository<T, ID> implements BaseRepository<T, ID>
 
     @Override
     public Optional<T> findSingle(BaseSpecification<T> specification) {
+
+        prepareFields();
         Predicate predicate = specification.getPredicate(root, criteriaBuilder);
 
         if (predicate != null) {
@@ -62,7 +63,7 @@ public abstract class AbstractRepository<T, ID> implements BaseRepository<T, ID>
 
             return Optional.of(entityManager.createQuery(query)
                     .getSingleResult());
-        }catch (NoResultException ex) {
+        } catch (NoResultException ex) {
             return Optional.empty();
         }
     }
@@ -76,6 +77,7 @@ public abstract class AbstractRepository<T, ID> implements BaseRepository<T, ID>
     @Override
     public List<T> find(BaseSpecification<T> specification, int offset, int limit) {
 
+        prepareFields();
         Predicate predicate = specification.getPredicate(root, criteriaBuilder);
         if (predicate != null) {
             query.where(specification.getPredicate(root, criteriaBuilder));
@@ -93,7 +95,6 @@ public abstract class AbstractRepository<T, ID> implements BaseRepository<T, ID>
                 .getResultList();
     }
 
-    @PostConstruct
     private void prepareFields() {
         clazz = getType();
         criteriaBuilder = entityManager.getCriteriaBuilder();

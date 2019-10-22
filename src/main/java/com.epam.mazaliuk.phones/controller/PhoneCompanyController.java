@@ -11,7 +11,7 @@ import java.util.List;
 
 @AllArgsConstructor
 @RestController
-@RequestMapping("/companies")
+@RequestMapping("/directory/companies")
 public class PhoneCompanyController extends BaseController<PhoneCompanyDTO, PhoneCompanySearch> {
 
     private final PhoneCompanyService phoneCompanyService;
@@ -42,6 +42,18 @@ public class PhoneCompanyController extends BaseController<PhoneCompanyDTO, Phon
     public PhoneCompanyDTO addCompany(@RequestBody PhoneCompanyDTO companyDTO) {
 
         return phoneCompanyService.save(companyDTO);
+    }
+
+    @PostMapping("/{companyId}")
+    public PhoneCompanyDTO addNumber(@PathVariable("companyId") Long companyId, @RequestBody PhoneNumberDTO phoneNumberDTO) {
+
+        return phoneCompanyService.addNumber(companyId, phoneNumberDTO);
+    }
+
+    @PutMapping("/{companyId}")
+    public PhoneCompanyDTO updateCompany(@PathVariable("companyId") Long companyId, @RequestBody PhoneCompanyDTO companyDTO) {
+
+        return phoneCompanyService.update(companyId, companyDTO);
     }
 
     @DeleteMapping("/{companyId}")

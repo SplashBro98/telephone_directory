@@ -18,15 +18,14 @@ public class PhoneNumberEntity {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "number")
+    @Column(name = "number", unique = true, length = 40)
     private String number;
 
     @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JoinColumn(name = "phone_company_id", nullable = false)
     private PhoneCompanyEntity phoneCompany;
 
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private UserEntity user;
-
 }

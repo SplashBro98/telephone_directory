@@ -39,7 +39,7 @@ public final class UserMapper {
 
     public List<UserDTO> mapListEntityToDTO(List<UserEntity> users) {
 
-        if(CollectionUtils.isEmpty(users)) {
+        if (CollectionUtils.isEmpty(users)) {
             return null;
         }
 
@@ -50,7 +50,7 @@ public final class UserMapper {
 
     public List<UserEntity> mapListDTOToEntity(List<UserDTO> users) {
 
-        if(CollectionUtils.isEmpty(users)) {
+        if (CollectionUtils.isEmpty(users)) {
             return null;
         }
 

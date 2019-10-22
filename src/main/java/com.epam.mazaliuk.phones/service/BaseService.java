@@ -15,6 +15,8 @@ public interface BaseService<T, V extends BaseSearch, ID> {
 
     void deleteById(ID id);
 
+    T update(ID id, T t);
+
     List<T> find(V v, int offset, int limit);
 
 }

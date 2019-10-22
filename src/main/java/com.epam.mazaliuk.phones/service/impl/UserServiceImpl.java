@@ -5,6 +5,7 @@ import com.epam.mazaliuk.phones.dto.UserDTO;
 import com.epam.mazaliuk.phones.entity.PhoneCompanyEntity;
 import com.epam.mazaliuk.phones.entity.PhoneNumberEntity;
 import com.epam.mazaliuk.phones.entity.UserEntity;
+import com.epam.mazaliuk.phones.exception.PhonenNumberException;
 import com.epam.mazaliuk.phones.exception.UserNotFoundException;
 import com.epam.mazaliuk.phones.mapper.PhoneNumberMapper;
 import com.epam.mazaliuk.phones.mapper.UserMapper;
@@ -22,7 +23,6 @@ import com.epam.mazaliuk.phones.specification.user.UserFindByLastNameSpecificati
 import com.epam.mazaliuk.phones.util.CollectionUtils;
 import com.epam.mazaliuk.phones.util.StringUtils;
 import lombok.AllArgsConstructor;
-import org.apache.tomcat.jni.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -106,7 +106,7 @@ public class UserServiceImpl implements UserService {
                         .orElse(number);
 
                 PhoneCompanyEntity company = number.getPhoneCompany();
-                if(company != null) {
+                if (company != null) {
                     PhoneCompanyEntity phoneCompany = phoneCompanyRepository
                             .findSingle(new PhoneCompanyFindByNameSpecification(company.getName()))
                             .orElse(company);
@@ -126,7 +126,30 @@ public class UserServiceImpl implements UserService {
     @Transactional
     @Override
     public UserDTO addNumber(Long userId, PhoneNumberDTO phoneNumberDTO) {
-        return null;
+        UserEntity userEntity = userRepository.getReferenceById(userId)
+                .orElseThrow(UserNotFoundException::new);
+        PhoneNumberEntity phoneNumber = phoneNumberMapper.map(phoneNumberDTO);
+        String number = phoneNumber.getNumber();
+
+        if (StringUtils.isEmpty(number)) {
+            throw new PhonenNumberException("empty number");
+        }
+
+        phoneNumber = phoneNumberRepository.findSingle(new PhoneNumberFindByNumberSpecification(number))
+                .orElse(phoneNumber);
+        userEntity.addNumber(phoneNumber);
+        phoneNumber.setUser(userEntity);
+
+        return userMapper.map(userEntity);
+    }
+
+    @Transactional
+    @Override
+    public UserDTO update(Long userId, UserDTO userDTO) {
+
+        UserEntity userFromDb = userRepository.getReferenceById(userId)
+                .orElseThrow(UserNotFoundException::new);
+        return userMapper.map(userFromDb);
     }
 
     @Transactional

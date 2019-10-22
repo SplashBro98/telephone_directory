@@ -19,13 +19,13 @@ public class PhoneCompanyEntity {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "name", unique = true)
+    @Column(name = "name", unique = true, length = 40)
     private String name;
 
     @Column(name = "year_of_issue")
     private int yearOfIssue;
 
-    @OneToMany(fetch = FetchType.LAZY, mappedBy = "phoneCompany", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "phoneCompany", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PhoneNumberEntity> phoneNumbers;
 
     public void addNumber(PhoneNumberEntity phoneNumber) {

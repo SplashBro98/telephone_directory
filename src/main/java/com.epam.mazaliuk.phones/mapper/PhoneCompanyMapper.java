@@ -37,7 +37,7 @@ public final class PhoneCompanyMapper {
 
     public List<PhoneCompanyDTO> mapListEntityToDTO(List<PhoneCompanyEntity> companyEntities) {
 
-        if(CollectionUtils.isEmpty(companyEntities)) {
+        if (CollectionUtils.isEmpty(companyEntities)) {
             return null;
         }
 
@@ -48,7 +48,7 @@ public final class PhoneCompanyMapper {
 
     public List<PhoneCompanyEntity> mapListDTOToEntity(List<PhoneCompanyDTO> companyDTOS) {
 
-        if(CollectionUtils.isEmpty(companyDTOS)) {
+        if (CollectionUtils.isEmpty(companyDTOS)) {
             return null;
         }
 
