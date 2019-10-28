@@ -1,28 +1,31 @@
 package com.epam.mazaliuk.phones.service.impl;
 
-import com.epam.mazaliuk.phones.dto.PhoneNumberDTO;
-import com.epam.mazaliuk.phones.dto.UserDTO;
-import com.epam.mazaliuk.phones.entity.PhoneCompanyEntity;
+import com.epam.mazaliuk.phones.dto.phonenumber.PhoneNumberReferenceDTO;
+import com.epam.mazaliuk.phones.dto.phonenumber.PhoneNumberReturnDTO;
+import com.epam.mazaliuk.phones.dto.user.UserCreateDTO;
+import com.epam.mazaliuk.phones.dto.user.UserMainReturnDTO;
+import com.epam.mazaliuk.phones.dto.user.UserUpdateDTO;
 import com.epam.mazaliuk.phones.entity.PhoneNumberEntity;
 import com.epam.mazaliuk.phones.entity.UserEntity;
+import com.epam.mazaliuk.phones.exception.PhoneNumberNotFoundException;
 import com.epam.mazaliuk.phones.exception.PhonenNumberException;
 import com.epam.mazaliuk.phones.exception.UserNotFoundException;
 import com.epam.mazaliuk.phones.mapper.PhoneNumberMapper;
 import com.epam.mazaliuk.phones.mapper.UserMapper;
-import com.epam.mazaliuk.phones.repository.PhoneCompanyRepository;
 import com.epam.mazaliuk.phones.repository.PhoneNumberRepository;
 import com.epam.mazaliuk.phones.repository.UserRepository;
 import com.epam.mazaliuk.phones.search.UserSearch;
 import com.epam.mazaliuk.phones.service.UserService;
 import com.epam.mazaliuk.phones.specification.BaseSpecification;
-import com.epam.mazaliuk.phones.specification.phonecompany.PhoneCompanyFindByNameSpecification;
-import com.epam.mazaliuk.phones.specification.phonenumber.PhoneNumberFindByNumberSpecification;
 import com.epam.mazaliuk.phones.specification.user.UserFindByCitySpecification;
 import com.epam.mazaliuk.phones.specification.user.UserFindByFirstNameSpecification;
 import com.epam.mazaliuk.phones.specification.user.UserFindByLastNameSpecification;
 import com.epam.mazaliuk.phones.util.CollectionUtils;
+import com.epam.mazaliuk.phones.util.Const;
 import com.epam.mazaliuk.phones.util.StringUtils;
+import com.epam.mazaliuk.phones.validator.EntityValidator;
 import lombok.AllArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,15 +41,16 @@ public class UserServiceImpl implements UserService {
 
     private final PhoneNumberRepository phoneNumberRepository;
 
-    private final PhoneCompanyRepository phoneCompanyRepository;
-
     private final UserMapper userMapper;
 
     private final PhoneNumberMapper phoneNumberMapper;
 
+    @Qualifier("userInsertValidator")
+    private final EntityValidator<UserEntity> insertValidator;
+
     @Transactional
     @Override
-    public List<UserDTO> find(UserSearch userSearch, int offset, int limit) {
+    public List<UserMainReturnDTO> find(UserSearch userSearch, int offset, int limit) {
 
         BaseSpecification<UserEntity> specification = BaseSpecification.empty();
 
@@ -70,51 +74,47 @@ public class UserServiceImpl implements UserService {
         return userMapper.mapListEntityToDTO(users);
     }
 
+    @Override
+    public List<UserMainReturnDTO> find(UserSearch search) {
+        return find(search, Const.DEFAULT_OFFSET, Const.DEFAULT_LIMIT);
+    }
+
     @Transactional
     @Override
-    public UserDTO find(Long id) {
+    public UserMainReturnDTO find(Long id) {
         Optional<UserEntity> userEntity = userRepository.findById(id);
 
-        return userEntity.map(userMapper::map).orElse(null);
+        return userEntity.map(userMapper::map)
+                .orElseThrow(() -> new UserNotFoundException("User with provided ID not found"));
     }
 
     @Transactional
     @Override
-    public List<PhoneNumberDTO> findPhoneNumbers(Long userId) {
-        Optional<UserEntity> userEntity = userRepository.getReferenceById(userId);
+    public List<PhoneNumberReturnDTO> findPhoneNumbers(Long userId) {
+        UserEntity userEntity = userRepository
+                .getReferenceById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User with provided ID not found"));
 
-        UserEntity user = userEntity.orElseThrow(UserNotFoundException::new);
-
-        return phoneNumberMapper.mapListEntityToDTO(user.getPhoneNumbers());
+        return phoneNumberMapper.mapListEntityToDTO(userEntity.getPhoneNumbers());
     }
 
     @Transactional
     @Override
-    public UserDTO save(UserDTO userDTO) {
+    public UserMainReturnDTO save(UserCreateDTO userDTO) {
 
         UserEntity userEntity = userMapper.map(userDTO);
-        List<PhoneNumberEntity> phoneNumbers = userEntity.getPhoneNumbers();
 
+        insertValidator.validate(userEntity);
+
+        List<PhoneNumberEntity> phoneNumbers = userEntity.getPhoneNumbers();
         if (!CollectionUtils.isEmpty(phoneNumbers)) {
 
             userEntity.setPhoneNumbers(new ArrayList<>());
 
             phoneNumbers.forEach(number -> {
 
-                PhoneNumberEntity phoneNumber = phoneNumberRepository
-                        .findSingle(new PhoneNumberFindByNumberSpecification(number.getNumber()))
-                        .orElse(number);
-
-                PhoneCompanyEntity company = number.getPhoneCompany();
-                if (company != null) {
-                    PhoneCompanyEntity phoneCompany = phoneCompanyRepository
-                            .findSingle(new PhoneCompanyFindByNameSpecification(company.getName()))
-                            .orElse(company);
-                    phoneNumber.setPhoneCompany(phoneCompany);
-                }
-
-                userEntity.addNumber(phoneNumber);
-                phoneNumber.setUser(userEntity);
+                Long numberId = number.getId();
+                adjustPhoneNumber(numberId, userEntity);
             });
         }
 
@@ -125,45 +125,99 @@ public class UserServiceImpl implements UserService {
 
     @Transactional
     @Override
-    public UserDTO addNumber(Long userId, PhoneNumberDTO phoneNumberDTO) {
-        UserEntity userEntity = userRepository.getReferenceById(userId)
-                .orElseThrow(UserNotFoundException::new);
-        PhoneNumberEntity phoneNumber = phoneNumberMapper.map(phoneNumberDTO);
-        String number = phoneNumber.getNumber();
+    public UserMainReturnDTO addNumber(Long userId, PhoneNumberReferenceDTO phoneNumberDTO) {
+        UserEntity userEntity = userRepository
+                .getReferenceById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User with provided ID not found"));
 
-        if (StringUtils.isEmpty(number)) {
-            throw new PhonenNumberException("empty number");
-        }
-
-        phoneNumber = phoneNumberRepository.findSingle(new PhoneNumberFindByNumberSpecification(number))
-                .orElse(phoneNumber);
-        userEntity.addNumber(phoneNumber);
-        phoneNumber.setUser(userEntity);
+        Long numberId = phoneNumberDTO.getId();
+        adjustPhoneNumber(numberId, userEntity);
 
         return userMapper.map(userEntity);
     }
 
     @Transactional
     @Override
-    public UserDTO update(Long userId, UserDTO userDTO) {
+    public UserMainReturnDTO update(Long userId, UserUpdateDTO userDTO) {
 
         UserEntity userFromDb = userRepository.getReferenceById(userId)
-                .orElseThrow(UserNotFoundException::new);
+                .orElseThrow(() -> new UserNotFoundException("User with provided ID not found"));
+
+        String userName = userDTO.getUserName();
+        if (StringUtils.isNotEmpty(userName)) {
+            userFromDb.setUserName(userName);
+        }
+
+        String firstName = userDTO.getFirstName();
+        if (StringUtils.isNotEmpty(firstName)) {
+            userFromDb.setFirstName(firstName);
+        }
+
+        String lastName = userDTO.getLastName();
+        if (StringUtils.isNotEmpty(lastName)) {
+            userFromDb.setLastName(lastName);
+        }
+
+        String city = userDTO.getCity();
+        if (StringUtils.isNotEmpty(city)) {
+            userFromDb.setCity(city);
+        }
+
+        List<PhoneNumberEntity> phoneNumbers = userFromDb.getPhoneNumbers();
+        if (CollectionUtils.isNotEmpty(phoneNumbers)) {
+            phoneNumbers.forEach(number -> number.setUser(null));
+        }
+
+        userFromDb.setPhoneNumbers(new ArrayList<>());
+        phoneNumbers = phoneNumberMapper.mapListReferenceDTOToEntity(userDTO.getPhoneNumbers());
+
+        if (CollectionUtils.isNotEmpty(phoneNumbers)) {
+            phoneNumbers.forEach(number -> userFromDb.addNumber(phoneNumberRepository
+                    .getReferenceById(number.getId())
+                    .orElseThrow(() -> new PhoneNumberNotFoundException("Phone number with provided ID not found"))));
+        }
+
         return userMapper.map(userFromDb);
     }
 
     @Transactional
     @Override
-    public void delete(UserDTO user) {
-        userRepository.delete(userMapper.map(user));
+    public void deleteById(Long id) {
+        UserEntity user = userRepository
+                .getReferenceById(id)
+                .orElseThrow(() -> new UserNotFoundException("User with provided ID not found"));
+
+        userRepository.delete(user);
     }
 
     @Transactional
     @Override
-    public void deleteById(Long id) {
-        UserEntity user = userRepository.getReferenceById(id)
+    public void removeNumber(Long userId, Long numberId) {
+
+        UserEntity user = userRepository.getReferenceById(userId)
                 .orElseThrow(UserNotFoundException::new);
 
-        userRepository.delete(user);
+        PhoneNumberEntity phoneNumber = phoneNumberRepository
+                .getReferenceById(numberId)
+                .orElseThrow(() -> new PhoneNumberNotFoundException("Phone number with provided ID not found"));
+
+        user.removeNumber(phoneNumber);
+        phoneNumber.setUser(null);
+    }
+
+    private void adjustPhoneNumber(Long numberId, UserEntity entity) {
+
+        if (numberId == null) {
+            throw new PhonenNumberException("Empty id");
+        }
+
+        Optional<PhoneNumberEntity> existingNumber = phoneNumberRepository.getReferenceById(numberId);
+
+        if (!existingNumber.isPresent()) {
+            throw new PhoneNumberNotFoundException("Phone number with provided ID not found");
+        }
+
+        entity.addNumber(existingNumber.get());
+        existingNumber.get().setUser(entity);
     }
 }

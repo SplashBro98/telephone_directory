@@ -1,6 +1,6 @@
 package com.epam.mazaliuk.phones.exception;
 
-public class UserNotFoundException extends BaseException {
+public class UserNotFoundException extends EntityNotFoundException {
 
     public UserNotFoundException() {
         super();

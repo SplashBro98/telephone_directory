@@ -1,6 +1,10 @@
 package com.epam.mazaliuk.phones.mapper;
 
-import com.epam.mazaliuk.phones.dto.UserDTO;
+import com.epam.mazaliuk.phones.dto.phonenumber.PhoneNumberReturnDTO;
+import com.epam.mazaliuk.phones.dto.user.UserCreateDTO;
+import com.epam.mazaliuk.phones.dto.user.UserMainReturnDTO;
+import com.epam.mazaliuk.phones.dto.user.UserReferenceDTO;
+import com.epam.mazaliuk.phones.entity.PhoneNumberEntity;
 import com.epam.mazaliuk.phones.entity.UserEntity;
 import com.epam.mazaliuk.phones.util.CollectionUtils;
 import lombok.AllArgsConstructor;
@@ -15,29 +19,69 @@ public final class UserMapper {
 
     private final PhoneNumberMapper phoneNumberMapper;
 
-    public UserDTO map(UserEntity userEntity) {
-        UserDTO userDTO = new UserDTO();
+    public UserMainReturnDTO map(UserEntity userEntity) {
+        UserMainReturnDTO userDTO = new UserMainReturnDTO();
+        userDTO.setUserName(userEntity.getUserName());
         userDTO.setId(userEntity.getId());
         userDTO.setFirstName(userEntity.getFirstName());
         userDTO.setLastName(userEntity.getLastName());
         userDTO.setCity(userEntity.getCity());
-        userDTO.setPhoneNumbers(phoneNumberMapper.mapListEntityToDTO(userEntity.getPhoneNumbers()));
+
+        if (CollectionUtils.isNotEmpty(userEntity.getPhoneNumbers())) {
+
+            List<PhoneNumberReturnDTO> phoneNumbers = userEntity.getPhoneNumbers().stream()
+                    .map(phoneNumberMapper::map)
+                    .collect(Collectors.toList());
+
+            userDTO.setPhoneNumbers(phoneNumbers);
+        }
 
         return userDTO;
     }
 
-    public UserEntity map(UserDTO userDTO) {
+    public UserReferenceDTO mapToReference(UserEntity userEntity) {
+
+        UserReferenceDTO userDTO = new UserReferenceDTO();
+        userDTO.setUserName(userEntity.getUserName());
+        userDTO.setId(userEntity.getId());
+        userDTO.setFirstName(userEntity.getFirstName());
+        userDTO.setLastName(userEntity.getLastName());
+        userDTO.setCity(userEntity.getCity());
+
+        return userDTO;
+    }
+
+    public UserEntity map(UserCreateDTO userDTO) {
         UserEntity userEntity = new UserEntity();
-        userEntity.setId(userDTO.getId());
+        userEntity.setUserName(userDTO.getUserName());
         userEntity.setFirstName(userDTO.getFirstName());
         userEntity.setLastName(userDTO.getLastName());
         userEntity.setCity(userDTO.getCity());
-        userEntity.setPhoneNumbers(phoneNumberMapper.mapListDTOToEntity(userDTO.getPhoneNumbers()));
+
+        if (CollectionUtils.isNotEmpty(userDTO.getPhoneNumbers())) {
+
+            List<PhoneNumberEntity> phoneNumbers = userDTO.getPhoneNumbers().stream()
+                    .map(phoneNumberMapper::map)
+                    .collect(Collectors.toList());
+            userEntity.setPhoneNumbers(phoneNumbers);
+        }
 
         return userEntity;
     }
 
-    public List<UserDTO> mapListEntityToDTO(List<UserEntity> users) {
+    public UserEntity map(UserReferenceDTO userReferenceDTO) {
+
+        UserEntity userEntity = new UserEntity();
+        userEntity.setId(userReferenceDTO.getId());
+        userEntity.setFirstName(userReferenceDTO.getFirstName());
+        userEntity.setLastName(userReferenceDTO.getLastName());
+        userEntity.setCity(userReferenceDTO.getCity());
+
+        return userEntity;
+
+    }
+
+    public List<UserMainReturnDTO> mapListEntityToDTO(List<UserEntity> users) {
 
         if (CollectionUtils.isEmpty(users)) {
             return null;
@@ -48,14 +92,14 @@ public final class UserMapper {
                 .collect(Collectors.toList());
     }
 
-    public List<UserEntity> mapListDTOToEntity(List<UserDTO> users) {
+    public List<UserReferenceDTO> mapListEntityToReferenceDTO(List<UserEntity> users) {
 
         if (CollectionUtils.isEmpty(users)) {
             return null;
         }
 
         return users.stream()
-                .map(this::map)
+                .map(this::mapToReference)
                 .collect(Collectors.toList());
     }
 }

@@ -16,10 +16,8 @@ public class UserInsertValidator implements EntityValidator<UserEntity> {
 
     private final UserRepository userRepository;
 
-
     @Override
     public void validate(UserEntity entity) {
-
         validateUserName(entity);
         validateFirstName(entity);
         validateLastName(entity);
@@ -75,13 +73,8 @@ public class UserInsertValidator implements EntityValidator<UserEntity> {
 
         String city = entity.getCity();
 
-        if (city.isEmpty()) {
-            throw new UserException("City is empty");
-        }
-
         if (city.length() > 40) {
             throw new UserException("City:" + city + " is too long");
         }
     }
-
 }

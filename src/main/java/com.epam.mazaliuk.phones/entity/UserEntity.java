@@ -19,7 +19,7 @@ public class UserEntity {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "user_name", unique = true, length = 40)
+    @Column(name = "user_name", nullable = false, unique = true, length = 40)
     private String userName;
 
     @Column(name = "first_name", nullable = false, length = 40)
@@ -31,7 +31,7 @@ public class UserEntity {
     @Column(name = "city", nullable = false, length = 40)
     private String city;
 
-    @OneToMany(mappedBy = "user", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @OneToMany(mappedBy = "user", cascade = CascadeType.PERSIST)
     private List<PhoneNumberEntity> phoneNumbers;
 
     public void addNumber(PhoneNumberEntity phoneNumber) {
@@ -40,6 +40,11 @@ public class UserEntity {
 
     public void removeNumber(PhoneNumberEntity phoneNumber) {
         phoneNumbers.remove(phoneNumber);
+    }
+
+    @PreRemove
+    public void clearNumbers() {
+        phoneNumbers.forEach(number -> number.setUser(null));
     }
 
 }

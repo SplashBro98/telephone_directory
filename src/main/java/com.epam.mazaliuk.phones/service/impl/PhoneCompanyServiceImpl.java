@@ -1,10 +1,14 @@
 package com.epam.mazaliuk.phones.service.impl;
 
-import com.epam.mazaliuk.phones.dto.PhoneCompanyDTO;
-import com.epam.mazaliuk.phones.dto.PhoneNumberDTO;
+import com.epam.mazaliuk.phones.dto.phonecompany.PhoneCompanyCreateDTO;
+import com.epam.mazaliuk.phones.dto.phonecompany.PhoneCompanyMainReturnDTO;
+import com.epam.mazaliuk.phones.dto.phonecompany.PhoneCompanyUpdateDTO;
+import com.epam.mazaliuk.phones.dto.phonenumber.PhoneNumberCreateDTO;
+import com.epam.mazaliuk.phones.dto.phonenumber.PhoneNumberReturnDTO;
 import com.epam.mazaliuk.phones.entity.PhoneCompanyEntity;
 import com.epam.mazaliuk.phones.entity.PhoneNumberEntity;
 import com.epam.mazaliuk.phones.exception.PhoneCompanyNotFoundException;
+import com.epam.mazaliuk.phones.exception.PhoneNumberNotFoundException;
 import com.epam.mazaliuk.phones.exception.PhonenNumberException;
 import com.epam.mazaliuk.phones.mapper.PhoneCompanyMapper;
 import com.epam.mazaliuk.phones.mapper.PhoneNumberMapper;
@@ -18,7 +22,9 @@ import com.epam.mazaliuk.phones.specification.phonecompany.PhoneCompanyFindByYea
 import com.epam.mazaliuk.phones.specification.phonenumber.PhoneNumberFindByNumberSpecification;
 import com.epam.mazaliuk.phones.util.CollectionUtils;
 import com.epam.mazaliuk.phones.util.StringUtils;
+import com.epam.mazaliuk.phones.validator.EntityValidator;
 import lombok.AllArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,9 +44,15 @@ public class PhoneCompanyServiceImpl implements PhoneCompanyService {
 
     private final PhoneNumberMapper phoneNumberMapper;
 
+    @Qualifier("phoneCompanyInsertValidator")
+    private final EntityValidator<PhoneCompanyEntity> insertValidator;
+
+    @Qualifier("phoneNumberInsertValidator")
+    private final EntityValidator<PhoneNumberEntity> numberValidator;
+
     @Transactional
     @Override
-    public List<PhoneCompanyDTO> find(PhoneCompanySearch phoneCompanySearch, int offset, int limit) {
+    public List<PhoneCompanyMainReturnDTO> find(PhoneCompanySearch phoneCompanySearch, int offset, int limit) {
 
         BaseSpecification<PhoneCompanyEntity> specification = BaseSpecification.empty();
 
@@ -61,27 +73,31 @@ public class PhoneCompanyServiceImpl implements PhoneCompanyService {
 
     @Transactional
     @Override
-    public PhoneCompanyDTO find(Long id) {
+    public PhoneCompanyMainReturnDTO find(Long id) {
         Optional<PhoneCompanyEntity> phoneCompany = phoneCompanyRepository.findById(id);
 
-        return phoneCompany.map(phoneCompanyMapper::map).orElseThrow(PhoneCompanyNotFoundException::new);
+        return phoneCompany
+                .map(phoneCompanyMapper::map)
+                .orElseThrow(() -> new PhoneCompanyNotFoundException("Phone company with provided ID not found"));
     }
 
     @Transactional
     @Override
-    public List<PhoneNumberDTO> findPhoneNumbers(Long companyId) {
+    public List<PhoneNumberReturnDTO> findPhoneNumbers(Long companyId) {
         Optional<PhoneCompanyEntity> phoneCompanyEntity = phoneCompanyRepository.getReferenceById(companyId);
-
-        PhoneCompanyEntity company = phoneCompanyEntity.orElseThrow(PhoneCompanyNotFoundException::new);
+        PhoneCompanyEntity company = phoneCompanyEntity
+                .orElseThrow(() -> new PhoneCompanyNotFoundException("Phone company with provided ID not found"));
 
         return phoneNumberMapper.mapListEntityToDTO(company.getPhoneNumbers());
     }
 
     @Transactional
     @Override
-    public PhoneCompanyDTO save(PhoneCompanyDTO phoneCompanyDTO) {
+    public PhoneCompanyMainReturnDTO save(PhoneCompanyCreateDTO phoneCompanyDTO) {
 
         PhoneCompanyEntity phoneCompany = phoneCompanyMapper.map(phoneCompanyDTO);
+
+        insertValidator.validate(phoneCompany);
 
         List<PhoneNumberEntity> phoneNumbers = phoneCompany.getPhoneNumbers();
 
@@ -89,12 +105,9 @@ public class PhoneCompanyServiceImpl implements PhoneCompanyService {
             phoneCompany.setPhoneNumbers(new ArrayList<>());
             phoneNumbers.forEach(number -> {
 
-                PhoneNumberEntity phoneNumber = phoneNumberRepository
-                        .findSingle(new PhoneNumberFindByNumberSpecification(number.getNumber()))
-                        .orElse(number);
-
-                phoneCompany.addNumber(phoneNumber);
-                phoneNumber.setPhoneCompany(phoneCompany);
+                numberValidator.validate(number);
+                phoneCompany.addNumber(number);
+                number.setPhoneCompany(phoneCompany);
             });
         }
 
@@ -105,19 +118,26 @@ public class PhoneCompanyServiceImpl implements PhoneCompanyService {
 
     @Transactional
     @Override
-    public PhoneCompanyDTO addNumber(Long companyId, PhoneNumberDTO phoneNumberDTO) {
-        PhoneCompanyEntity phoneCompanyEntity = phoneCompanyRepository.getReferenceById(companyId)
-                .orElseThrow(PhoneCompanyNotFoundException::new);
+    public PhoneCompanyMainReturnDTO addNumber(Long companyId, PhoneNumberCreateDTO phoneNumberDTO) {
+        PhoneCompanyEntity phoneCompanyEntity = phoneCompanyRepository
+                .getReferenceById(companyId)
+                .orElseThrow(() -> new PhoneCompanyNotFoundException("Phone company with provided ID not found"));
 
-        PhoneNumberEntity phoneNumberEntity = phoneNumberMapper.map(phoneNumberDTO);
-        String phoneNumber = phoneNumberEntity.getNumber();
+        String phoneNumber = phoneNumberDTO.getNumber();
 
         if (StringUtils.isEmpty(phoneNumber)) {
-            throw new PhonenNumberException("empty number");
+            throw new PhonenNumberException("Empty number");
         }
 
-        phoneNumberEntity = phoneNumberRepository.findSingle(new PhoneNumberFindByNumberSpecification(phoneNumber))
-                .orElse(phoneNumberEntity);
+        Optional<PhoneNumberEntity> existingNumber = phoneNumberRepository
+                .findSingle(new PhoneNumberFindByNumberSpecification(phoneNumber));
+
+        if (existingNumber.isPresent()) {
+            throw new PhonenNumberException("This number is already exist");
+        }
+
+        PhoneNumberEntity phoneNumberEntity = new PhoneNumberEntity();
+        phoneNumberEntity.setNumber(phoneNumber);
 
         phoneCompanyEntity.addNumber(phoneNumberEntity);
         phoneNumberEntity.setPhoneCompany(phoneCompanyEntity);
@@ -125,22 +145,59 @@ public class PhoneCompanyServiceImpl implements PhoneCompanyService {
         return phoneCompanyMapper.map(phoneCompanyEntity);
     }
 
+    @Transactional
     @Override
-    public PhoneCompanyDTO update(Long aLong, PhoneCompanyDTO companyDTO) {
-        return null;
+    public void removeNumber(Long companyId, Long numberId) {
+
+        PhoneCompanyEntity phoneCompanyEntity = phoneCompanyRepository
+                .getReferenceById(companyId)
+                .orElseThrow(() -> new PhoneCompanyNotFoundException("Phone company with provided ID not found"));
+
+        PhoneNumberEntity phoneNumberEntity = phoneNumberRepository.getReferenceById(numberId)
+                .orElseThrow(() -> new PhoneCompanyNotFoundException("Phone company with provided ID not found"));
+
+        phoneCompanyEntity.removeNumber(phoneNumberEntity);
+        phoneNumberEntity.setPhoneCompany(null);
     }
 
     @Transactional
     @Override
-    public void delete(PhoneCompanyDTO phoneCompany) {
-        phoneCompanyRepository.delete(phoneCompanyMapper.map(phoneCompany));
+    public PhoneCompanyMainReturnDTO update(Long companyId, PhoneCompanyUpdateDTO companyDTO) {
+
+        PhoneCompanyEntity phoneCompanyFromDb = phoneCompanyRepository
+                .getReferenceById(companyId)
+                .orElseThrow(() -> new PhoneCompanyNotFoundException("Phone company with provided ID not found"));
+
+        String name = companyDTO.getName();
+        if (StringUtils.isNotEmpty(name)) {
+            companyDTO.setName(name);
+        }
+
+        phoneCompanyFromDb.setYearOfIssue(companyDTO.getYearOfIssue());
+
+        List<PhoneNumberEntity> phoneNumbers = phoneCompanyFromDb.getPhoneNumbers();
+        if (CollectionUtils.isNotEmpty(phoneNumbers)) {
+            phoneNumbers.forEach(number -> number.setUser(null));
+        }
+
+        phoneCompanyFromDb.setPhoneNumbers(new ArrayList<>());
+        phoneNumbers = phoneNumberMapper.mapListReferenceDTOToEntity(companyDTO.getPhoneNumbers());
+
+        if (CollectionUtils.isNotEmpty(phoneNumbers)) {
+            phoneNumbers.forEach(number -> phoneCompanyFromDb.addNumber(phoneNumberRepository
+                    .getReferenceById(number.getId())
+                    .orElseThrow(PhoneNumberNotFoundException::new)));
+        }
+
+        return phoneCompanyMapper.map(phoneCompanyFromDb);
     }
 
     @Transactional
     @Override
     public void deleteById(Long id) {
-        PhoneCompanyEntity phoneCompany = phoneCompanyRepository.getReferenceById(id)
-                .orElseThrow(PhoneCompanyNotFoundException::new);
+        PhoneCompanyEntity phoneCompany = phoneCompanyRepository
+                .getReferenceById(id)
+                .orElseThrow(() -> new PhoneCompanyNotFoundException("Phone company with provided ID not found"));
 
         phoneCompanyRepository.delete(phoneCompany);
     }

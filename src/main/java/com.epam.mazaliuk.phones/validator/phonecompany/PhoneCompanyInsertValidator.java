@@ -2,7 +2,6 @@ package com.epam.mazaliuk.phones.validator.phonecompany;
 
 import com.epam.mazaliuk.phones.entity.PhoneCompanyEntity;
 import com.epam.mazaliuk.phones.exception.PhoneCompanyException;
-import com.epam.mazaliuk.phones.exception.UserException;
 import com.epam.mazaliuk.phones.repository.PhoneCompanyRepository;
 import com.epam.mazaliuk.phones.specification.phonecompany.PhoneCompanyFindByNameSpecification;
 import com.epam.mazaliuk.phones.util.StringUtils;
@@ -35,7 +34,7 @@ public class PhoneCompanyInsertValidator implements EntityValidator<PhoneCompany
                 .findSingle(new PhoneCompanyFindByNameSpecification(name));
 
         if (phoneCompany.isPresent()) {
-            throw new UserException("Phone Company with name: " + name + " is already exist");
+            throw new PhoneCompanyException("Phone Company with name: " + name + " is already exist");
         }
     }
 }

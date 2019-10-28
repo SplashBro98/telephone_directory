@@ -1,6 +1,7 @@
 package com.epam.mazaliuk.phones.repository;
 
 import com.epam.mazaliuk.phones.specification.BaseSpecification;
+import com.epam.mazaliuk.phones.util.Const;
 
 import javax.persistence.EntityManager;
 import javax.persistence.NoResultException;
@@ -13,9 +14,6 @@ import java.util.List;
 import java.util.Optional;
 
 public abstract class AbstractRepository<T, ID> implements BaseRepository<T, ID> {
-
-    private static final int DEFAULT_OFFSET = 0;
-    private static final int DEFAULT_LIMIT = 10;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -71,7 +69,7 @@ public abstract class AbstractRepository<T, ID> implements BaseRepository<T, ID>
     @Override
     public List<T> find(BaseSpecification<T> specification) {
 
-        return find(specification, DEFAULT_OFFSET, DEFAULT_LIMIT);
+        return find(specification, Const.DEFAULT_OFFSET, Const.DEFAULT_LIMIT);
     }
 
     @Override

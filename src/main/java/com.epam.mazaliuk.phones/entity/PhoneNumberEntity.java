@@ -21,7 +21,7 @@ public class PhoneNumberEntity {
     @Column(name = "number", unique = true, length = 40)
     private String number;
 
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "phone_company_id", nullable = false)
     private PhoneCompanyEntity phoneCompany;
 

@@ -1,6 +1,6 @@
 package com.epam.mazaliuk.phones.exception;
 
-public class PhoneCompanyNotFoundException extends BaseException {
+public class PhoneCompanyNotFoundException extends EntityNotFoundException {
 
     public PhoneCompanyNotFoundException() {
         super();
